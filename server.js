@@ -212,12 +212,17 @@ app.post('/api/files',requireLogin,upload.single('file'),(req,res)=>{
   if(!req.file) return res.status(400).json({error:'Keine Datei'});
   const requestedKind=String(req.body.kind||'').toLowerCase();
   const isImage=req.file.mimetype.startsWith('image/');
-  const isDocument=[
+  const ext=path.extname(req.file.originalname||'').toLowerCase();
+  const documentExtensions=['.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.txt','.rtf','.odt','.ods','.odp','.csv'];
+  const documentMimeTypes=[
     'application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain'
-  ].includes(req.file.mimetype);
+    'text/plain','text/csv','application/rtf','application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.spreadsheet','application/vnd.oasis.opendocument.presentation',
+    'application/octet-stream'
+  ];
+  const isDocument=documentMimeTypes.includes(req.file.mimetype) && documentExtensions.includes(ext) || documentExtensions.includes(ext);
   let kind=isImage?'image':isDocument?'document':null;
   if(requestedKind==='image' && !isImage) kind=null;
   if(requestedKind==='document' && !isDocument) kind=null;
