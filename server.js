@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS info (
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   date TEXT NOT NULL,
+  time TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL,
   details TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -70,6 +71,8 @@ CREATE TABLE IF NOT EXISTS for_you (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+try { db.exec("ALTER TABLE events ADD COLUMN time TEXT NOT NULL DEFAULT ''"); } catch (e) {}
+
 if (!db.prepare('SELECT id FROM info WHERE id=1').get()) {
   db.prepare('INSERT INTO info (id,title,body) VALUES (1,?,?)').run('Schön, dass ihr da seid!','Hier findet ihr alles Wichtige rund um unsere Klasse – aktuell, gemeinsam und an einem Ort.');
 }
@@ -123,12 +126,15 @@ app.put('/api/info',requireAdmin,(req,res)=>{
 app.get('/api/events',requireLogin,(req,res)=>res.json(db.prepare('SELECT * FROM events ORDER BY date ASC, id ASC').all()));
 app.post('/api/events',requireLogin,(req,res)=>{
   const date=String(req.body?.date||'').trim().slice(0,10);
+  const time=String(req.body?.time||'').trim().slice(0,5);
   const title=String(req.body?.title||'').trim().slice(0,120);
   const details=String(req.body?.details||'').trim().slice(0,250);
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!title) return res.status(400).json({error:'Datum und Titel erforderlich'});
-  const result=db.prepare('INSERT INTO events(date,title,details) VALUES(?,?,?)').run(date,title,details);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!title) return res.status(400).json({error:'Datum und Überschrift erforderlich'});
+  if(time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return res.status(400).json({error:'Ungültige Uhrzeit'});
+  const result=db.prepare('INSERT INTO events(date,time,title,details) VALUES(?,?,?,?)').run(date,time,title,details);
   res.json({ok:true,id:result.lastInsertRowid});
 });
+app.delete('/api/events/:id',requireAdmin,(req,res)=>{ db.prepare('DELETE FROM events WHERE id=?').run(req.params.id); res.json({ok:true}); });
 
 app.get('/api/news',requireLogin,(req,res)=>res.json(db.prepare('SELECT * FROM news ORDER BY date DESC, id DESC').all()));
 app.put('/api/news/:id',requireAdmin,upload.single('image'),(req,res)=>{
@@ -147,6 +153,21 @@ app.put('/api/news/:id',requireAdmin,upload.single('image'),(req,res)=>{
   res.json({ok:true});
 });
 
+app.post('/api/news',requireAdmin,upload.single('image'),(req,res)=>{
+  const date=String(req.body?.date||'').trim().slice(0,30);
+  const title=String(req.body?.title||'').trim().slice(0,120);
+  const body=String(req.body?.body||'').trim().slice(0,1000);
+  if(!title||!body){ if(req.file) try{fs.unlinkSync(req.file.path)}catch{}; return res.status(400).json({error:'Überschrift und Text erforderlich'}); }
+  db.prepare('INSERT INTO news(date,title,body,image_filename) VALUES(?,?,?,?)').run(date,title,body,req.file?req.file.filename:null);
+  res.json({ok:true});
+});
+app.delete('/api/news/:id',requireAdmin,(req,res)=>{
+  const n=db.prepare('SELECT * FROM news WHERE id=?').get(req.params.id);
+  if(n?.image_filename) try{fs.unlinkSync(path.join(UPLOADS,n.image_filename))}catch{}
+  db.prepare('DELETE FROM news WHERE id=?').run(req.params.id);
+  res.json({ok:true});
+});
+
 app.get('/api/for-you',requireLogin,(req,res)=>res.json(db.prepare('SELECT * FROM for_you ORDER BY id DESC LIMIT 30').all()));
 app.post('/api/for-you',requireLogin,(req,res)=>{
   const name=String(req.body?.name||'').trim().slice(0,40);
@@ -155,6 +176,8 @@ app.post('/api/for-you',requireLogin,(req,res)=>{
   db.prepare('INSERT INTO for_you(name,text) VALUES(?,?)').run(name,text);
   res.json({ok:true});
 });
+
+app.delete('/api/for-you/:id',requireAdmin,(req,res)=>{ db.prepare('DELETE FROM for_you WHERE id=?').run(req.params.id); res.json({ok:true}); });
 
 app.get('/api/messages',requireLogin,(req,res)=>{
   const rows=db.prepare(`SELECT m.*, COUNT(r.id) AS reaction_count,
