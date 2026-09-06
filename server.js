@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS files (
   filename TEXT NOT NULL,
   original_name TEXT NOT NULL,
   kind TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Infos',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS info (
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS for_you (
 );
 `);
 try { db.exec("ALTER TABLE events ADD COLUMN time TEXT NOT NULL DEFAULT ''"); } catch (e) {}
+try { db.exec("ALTER TABLE files ADD COLUMN category TEXT NOT NULL DEFAULT 'Infos'"); } catch (e) {}
 
 if (!db.prepare('SELECT id FROM info WHERE id=1').get()) {
   db.prepare('INSERT INTO info (id,title,body) VALUES (1,?,?)').run('Schön, dass ihr da seid!','Hier findet ihr alles Wichtige rund um unsere Klasse – aktuell, gemeinsam und an einem Ort.');
@@ -222,7 +224,9 @@ app.post('/api/files',requireLogin,upload.single('file'),(req,res)=>{
   if(!kind){ try{fs.unlinkSync(req.file.path);}catch{} return res.status(400).json({error:'Dieser Dateityp ist hier nicht erlaubt'}); }
   const title=String(req.body.title||'').trim().slice(0,120);
   if(!title){ try{fs.unlinkSync(req.file.path);}catch{} return res.status(400).json({error:'Eine Überschrift ist erforderlich'}); }
-  db.prepare('INSERT INTO files(title,filename,original_name,kind) VALUES(?,?,?,?)').run(title,req.file.filename,req.file.originalname,kind);
+  const categories=['Elternbriefe','Infos','Materialien'];
+  const category=kind==='document' && categories.includes(String(req.body.category||'')) ? String(req.body.category) : (kind==='document' ? 'Infos' : '');
+  db.prepare('INSERT INTO files(title,filename,original_name,kind,category) VALUES(?,?,?,?,?)').run(title,req.file.filename,req.file.originalname,kind,category);
   res.json({ok:true});
 });
 app.delete('/api/files/:id',requireAdmin,(req,res)=>{
