@@ -1,0 +1,14 @@
+{
+  "name": "Flex 1 – Schulklassen-App",
+  "short_name": "Flex 1",
+  "lang": "de-DE",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7ff",
+  "theme_color": "#5b5bd6",
+  "description": "Gemeinsamer digitaler Klassenraum der Flex 1.",
+  "icons": [
+    {"src":"/icons/icon-192.svg","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"},
+    {"src":"/icons/icon-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
