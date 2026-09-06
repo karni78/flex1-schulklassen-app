@@ -1,0 +1,20 @@
+{
+  "name": "schulklassen-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Passwortgeschützte Schulklassen-Web-App mit gemeinsamem Chat, Reaktionen, Bildern, Informationen und Dokumenten.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2",
+    "better-sqlite3": "^12.4.1"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
